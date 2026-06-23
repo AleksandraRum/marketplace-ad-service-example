@@ -6,6 +6,7 @@ import pytest
 
 from src.application.ports.message_broker import MessageBroker
 from src.application.ports.outbox import OutboxMessage, OutboxRepository
+from src.trace import get_trace_id
 from src.application.ports.repositories import AdRepository
 from src.application.ports.uow import UnitOfWork
 from src.application.ports.user_profile import UserInfo, UserProfileService
@@ -72,7 +73,12 @@ class FakeOutboxRepository(OutboxRepository):
 
     async def add(self, event_type: str, payload: dict[str, Any]) -> None:
         self.messages.append(
-            OutboxMessage(id=self._next_id, event_type=event_type, payload=payload)
+            OutboxMessage(
+                id=self._next_id,
+                event_type=event_type,
+                payload=payload,
+                trace_id=get_trace_id() or None,
+            )
         )
         self._next_id += 1
 

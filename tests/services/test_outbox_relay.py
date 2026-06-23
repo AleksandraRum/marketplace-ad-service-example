@@ -4,6 +4,7 @@ import pytest
 
 from src.application.ports.message_broker import MessageBroker
 from src.application.services.outbox_relay import OutboxRelay
+from src.trace import reset_trace_id, set_trace_id
 from tests.conftest import FakeMessageBroker, FakeUnitOfWork
 
 
@@ -16,16 +17,18 @@ class RaisingBroker(MessageBroker):
 async def test_relay_sends_and_marks_published(
     fake_uow: FakeUnitOfWork, fake_broker: FakeMessageBroker
 ) -> None:
+    token = set_trace_id("test-trace-001")
     await fake_uow.outbox.add("ad.created", {"ad_id": 1})
     await fake_uow.outbox.add("ad.updated", {"ad_id": 1})
+    reset_trace_id(token)
 
     relay = OutboxRelay(uow_factory=lambda: fake_uow, broker=fake_broker)
     processed = await relay._process_batch()
 
     assert processed == 2
     assert fake_broker.sent == [
-        {"event": "ad.created", "payload": {"ad_id": 1}},
-        {"event": "ad.updated", "payload": {"ad_id": 1}},
+        {"event": "ad.created", "payload": {"ad_id": 1}, "trace_id": "test-trace-001"},
+        {"event": "ad.updated", "payload": {"ad_id": 1}, "trace_id": "test-trace-001"},
     ]
     assert fake_uow.committed
     assert fake_uow.outbox.messages == []

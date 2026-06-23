@@ -9,6 +9,8 @@ from src.infrastructure.persistence.database import (
     create_engine,
     create_session_factory,
 )
+from src.logging_config import configure_logging
+from src.middleware import TraceMiddleware
 from src.presentation.api.dependencies import setup
 from src.presentation.api.routes.internal import router as internal_router
 from src.presentation.api.routes.public import router as public_router
@@ -16,6 +18,7 @@ from src.settings import Settings
 
 
 def create_app() -> FastAPI:
+    configure_logging()
     settings = Settings()
 
     engine = create_engine(settings)
@@ -34,4 +37,5 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Ad Service", lifespan=lifespan)
     app.include_router(public_router)
     app.include_router(internal_router)
+    app.add_middleware(TraceMiddleware)
     return app
